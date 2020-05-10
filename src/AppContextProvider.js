@@ -1,47 +1,28 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import AppContext from './AppContext'
+import axios from "axios";
 
 export default function AppContextProvider(props) {
   
-  const [userGoals] = useState({
-                              id: '0001',
-                              goals: 
-                              [
-                                {
-                                  description: 'Be able to meditate for 2 hours.',
-                                  creationDate: '05/01/2020',
-                                  duration: 365,
-                                  benchmarks: [
-                                      {
-                                      description: 'Meditate for 10 minutes each day',
-                                      records: [true,true,true,false,false,true,false]
-                                    }
-                                  ]
-                                },
-                                {
-                                  description: 'Find a front end developer job.',
-                                  creationDate: '05/07/2020',
-                                  duration: 365,
-                                  benchmarks: [
-                                    {
-                                      description: 'Code for 2 hours each day',
-                                      records: [true]
-                                    },
-                                    {
-                                      description: 'Learn one new coding skill each day',
-                                      records: [true]
-                                    },
-                                    {
-                                      description: 'Apply for one developer job each day',
-                                      records: [false]
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          )
+  const [userGoals, setUserGoals] = useState(undefined);
+
+  const fetchGoals = async () =>{
+
+    try{
+      const res = await axios.get(`https://m2x3ewcsne.execute-api.us-east-2.amazonaws.com/beta/goals`);
+      setUserGoals({goals: res.data});
+    }catch(err){
+      console.log(`An error has occured while fetching goal data: ${err}`);
+    }
+  }
+
+  useEffect(() => {
+    console.log('Fetching')
+    fetchGoals();
+  },[])
+
   return (
-    <AppContext.Provider value={userGoals}>
+    <AppContext.Provider value={{goals: userGoals, setGoals : setUserGoals}}>
       {props.children}
     </AppContext.Provider>
   )

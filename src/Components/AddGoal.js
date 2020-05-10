@@ -1,7 +1,8 @@
-import React, {useState} from 'react'
+import React,{useState, useContext, useRef} from 'react'
 import styled from 'styled-components'
-
-import AddBenchmark from './AddBenchmark'
+import AppContext from '../AppContext'
+import moment from 'moment'
+import axios from 'axios'
 
 const AddGoalWrapper = styled.div`
   padding: 10px;
@@ -9,12 +10,7 @@ const AddGoalWrapper = styled.div`
   margin-bottom: 15px;
   border-radius: 5px;
   box-shadow: 3px 3px 16px rgba(0,0,0,0.25);
-  max-width: 75%;
-`
-const AddGoalForm = styled.form`
-  border-radius: 5px;
-  border: solid thin black;
-  padding: 10px;
+  max-width: 75%; 
 `
 const FormInput = styled.input`
   width: 75%;
@@ -25,52 +21,104 @@ const FormInput = styled.input`
     border: none;
   }
 `
-const DailyBenchmarksDisplay = styled.div`
-
+const AddBenchmarkWrapper = styled.div`
+  border: solid thin black;
+  border-radius: 5px;
+  padding: 5px;
+  margin: 5px;
 `
-
+const GoalSubmit = styled.div`
+  display: inline-block;
+  border: solid thin black;
+  border-radius: 5px;
+  margin: 5px;
+  padding: 5px;
+  box-shadow: 5px 5px 12px rgba(0,0,0,0.5);
+  &:hover{
+    cursor: pointer;
+    box-shadow: none;
+  }
+`
 export default function AddGoal() {
 
-  const [goalDescription, setGoalDescription] = useState('');
-  const [termLength, setTermLength] = useState(7);
-  const [hasBenchmark, setHasBenchmark] = useState(false);
-  const [benchmarkDescriptions, setBenchmarkDescriptions] = useState([]);
+  const context = useContext(AppContext);
+  const benchmarkInputRef = useRef(null);
+  const goalInputRef = useRef(null);
 
-  
-  const handleDescriptionSubmit = (e,description) =>{
+  const [goalDescription, setGoalDescription] = useState('');
+  const [benchmarkDescription, setBenchmarkDescription] = useState('');
+  const [benchmarks, setBenchmarks] = useState([]);
+  const [hasBenchmarks, setHasBenchmarks] = useState(false);
+  const [termLength, setTermLength] = useState('');
+
+  const handleBenchmarkSubmit = () =>{
+    console.log('Benchmark submit...')
+    const oldBenchmarks = [...benchmarks];
+    const benchObject = { description: benchmarkDescription, records : [{completed : true}]};
+    oldBenchmarks.push(benchObject);
+    setBenchmarks(oldBenchmarks);
+    setHasBenchmarks(true);
+    benchmarkInputRef.current.value = " ";
+
+  }
+
+  const submitGoal = async () =>{
+
+    const now = Date.now();
+    const idNum = context.goals.goals.length + 1;
     
-    const benchmarks = [...benchmarkDescriptions];
-    benchmarks.push(description);
-    setBenchmarkDescriptions(benchmarks);
-    setHasBenchmark(true);
-    e.target.reset();
-    e.preventDefault();
+    const newGoal = {
+      id : idNum.toString(),
+      description: goalDescription,
+      creationDate: moment(now).format("MM/DD/YYYY"),
+      duration: parseInt(termLength),
+      benchmarks: benchmarks
+    }
+    
+    const id = context.goals.id;
+
+    const setUserGoals = context.setGoals;
+    const oldGoals = [...context.goals.goals];
+    oldGoals.push(newGoal);
+
+    const state = {
+      id: id,
+      goals: oldGoals
+    }
+    
+    goalInputRef.current.value = " ";
+    setBenchmarks([]);
+    setHasBenchmarks(false);
+    
+    try{
+      console.log(newGoal)
+      await axios.post(`https://m2x3ewcsne.execute-api.us-east-2.amazonaws.com/beta/goals/{id}`, newGoal)
+    }catch(err){
+      console.log(`An error has occurred while creating a new goal: ${err}`)
+    }
+    setUserGoals(state);
   }
 
   return (
     <AddGoalWrapper>
-      <AddGoalForm>
-        <FormInput type='text' placeholder='What is your goal?' onChange={(e) => {setGoalDescription(e.target.value)}} />
-        <p>Select a term length:</p>
-        <select onChange={(e) => {setTermLength(e.target.value)}}>
+      <FormInput type="text" placeholder="Add a description of your goal..." onChange={(e) => setGoalDescription(e.target.value)} ref={goalInputRef}/>
+      <p>Select a term:</p>
+      <select onChange={(e) => {setTermLength(e.target.value)}}>
           <option value={7}>Short Term {`(1 week)`}</option>
           <option value={30}>Near Term {`(1 month)`}</option>
           <option value={90}>Mid Term {`(3 months)`}</option>
           <option value={356}>Long Term {`(1 year)`}</option>
-        </select>
-        {!hasBenchmark ? " " : 
-                              <DailyBenchmarksDisplay>
-                                <h4><u>Daily Benchmarks</u></h4>
-                                <ul>
-                                {benchmarkDescriptions.map(description => (
-                                  <li style={{margin: '5px'}}>{description}</li>
-                                ))}
-                                </ul>
-                              </DailyBenchmarksDisplay>
-                            }
-        <AddBenchmark handleDescriptionSubmit={handleDescriptionSubmit} hasBenchmark={hasBenchmark} />
-        <input type='submit' value='Submit New Goal' />
-      </AddGoalForm>
+      </select>
+      <p>Daily Benchmarks:</p>
+      {!hasBenchmarks ? " " : <ul>{benchmarks.map((benchmark,index) =>(<li key={index}>{benchmark.description}</li>))}</ul>}
+      <AddBenchmarkWrapper>
+        {!hasBenchmarks ? <p>Add a daily benchmark</p> : <p>Add another daily benchmark</p>}
+        <FormInput type="text" placeholder="Add a description of your daily benchmark..." onChange={(e) => setBenchmarkDescription(e.target.value)} ref={benchmarkInputRef}/>
+        <button style={{padding: '5px', margin: '5px'}} onClick={handleBenchmarkSubmit}>Submit Daily Benchmark</button>
+      </AddBenchmarkWrapper>
+        <GoalSubmit onClick={submitGoal}>
+          <p>Submit New Goal</p>
+        </GoalSubmit>
     </AddGoalWrapper>
   )
 }

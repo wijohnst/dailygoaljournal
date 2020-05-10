@@ -1,0 +1,5 @@
+{
+  "api":{
+    "invokeUrl" : " https://m2x3ewcsne.execute-api.us-east-2.amazonaws.com/beta"
+  }
+}
